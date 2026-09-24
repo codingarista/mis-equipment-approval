@@ -1,3 +1,8 @@
+-- ============================================
+-- 設備異常/維修簽核系統 資料庫結構
+-- 資料庫名稱: mis_equipment_approval
+-- ============================================
+
 -- 部門主檔
 CREATE TABLE departments (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -5,6 +10,7 @@ CREATE TABLE departments (
 );
 
 -- 使用者(申請人、主管、維修人員、品管、經理、管理員)
+-- 業務規則:品管(QC)與經理(MANAGER)的處理範圍限定在自己所屬部門,由程式邏輯控制,非資料庫欄位限制
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -27,6 +33,7 @@ CREATE TABLE equipment (
 );
 
 -- 異常/維修申請單(主體)
+-- status 對應完整流程圖的 11 個狀態
 CREATE TABLE tickets (
     id INT PRIMARY KEY AUTO_INCREMENT,
     equipment_id INT NOT NULL,
@@ -47,7 +54,7 @@ CREATE TABLE tickets (
     FOREIGN KEY (current_technician_id) REFERENCES users(id)
 );
 
--- 簽核/處理歷程紀錄
+-- 簽核/處理歷程紀錄(每次狀態變更都留下一筆紀錄,是查詢單據完整歷程的依據)
 CREATE TABLE approval_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     ticket_id INT NOT NULL,
@@ -62,7 +69,7 @@ CREATE TABLE approval_logs (
     FOREIGN KEY (actor_id) REFERENCES users(id)
 );
 
--- 通知紀錄(保管者/申請人已讀狀態)
+-- 通知紀錄(設備保管者/申請人的已讀狀態)
 CREATE TABLE notifications (
     id INT PRIMARY KEY AUTO_INCREMENT,
     ticket_id INT NOT NULL,
