@@ -345,4 +345,53 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 經理結案
+    @Transactional
+    public Ticket managerClose(Integer ticketId, Integer actorId, String comment) {
+
+        // 步驟 1:確認單據存在
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        // 步驟 2:確認單據狀態是「已升級」
+        if (ticket.getStatus() != TicketStatus.ESCALATED) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法進行經理結案");
+        }
+
+        // 步驟 3:確認 comment 必填
+        if (comment == null || comment.isBlank()) {
+            throw new IllegalArgumentException("經理結案時必須填寫處理說明");
+        }
+
+        // 步驟 4:確認操作者存在
+        User actor = userRepository.findById(actorId);
+        if (actor == null) {
+            throw new IllegalArgumentException("找不到指定的經理");
+        }
+
+        // 步驟 5:確認設備存在,並比對部門
+        Equipment equipment = equipmentRepository.findById(ticket.getEquipmentId());
+        if (equipment == null) {
+            throw new IllegalArgumentException("找不到這張單對應的設備");
+        }
+
+        if (!actor.getDepartmentId().equals(equipment.getDepartmentId())) {
+            throw new IllegalStateException("只有設備所屬部門的經理,才能處理這張升級單");
+        }
+
+        // 步驟 6:更新單據
+        ticketRepository.managerClose(ticketId, TicketStatus.CLOSED_BY_MANAGER);
+
+        // 步驟 7:新增簽核紀錄
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(actorId);
+        log.setAction("MANAGER_CLOSE");
+        log.setComment(comment);
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
 }

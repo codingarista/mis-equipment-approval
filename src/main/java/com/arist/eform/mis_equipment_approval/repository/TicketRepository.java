@@ -109,4 +109,9 @@ public class TicketRepository {
                      "current_technician_id = NULL, status = ? WHERE id = ?";
         jdbcTemplate.update(sql, newStatus.name(), ticketId);
     }
+        // 經理結案:更新狀態並設定結案時間
+    public void managerClose(Integer ticketId, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET status = ?, closed_at = NOW() WHERE id = ?";
+        jdbcTemplate.update(sql, newStatus.name(), ticketId);
+    }
 }

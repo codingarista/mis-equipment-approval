@@ -17,6 +17,7 @@ import com.arist.eform.mis_equipment_approval.dto.ResolveTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.ResubmitTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.QcReviewRequest;
 import com.arist.eform.mis_equipment_approval.dto.DisputeTicketRequest;
+import com.arist.eform.mis_equipment_approval.dto.ManagerCloseRequest;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -145,6 +146,19 @@ public class TicketController {
                                             @RequestBody DisputeTicketRequest request) {
         try {
             Ticket ticket = ticketService.disputeTicket(id, request.getActorId(), request.getComment());
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+        @PatchMapping("/{id}/manager-close")
+    public ResponseEntity<?> managerClose(@PathVariable Integer id,
+                                           @RequestBody ManagerCloseRequest request) {
+        try {
+            Ticket ticket = ticketService.managerClose(id, request.getActorId(), request.getComment());
             return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
 
         } catch (IllegalArgumentException e) {
