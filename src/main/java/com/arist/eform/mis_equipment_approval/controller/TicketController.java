@@ -19,6 +19,13 @@ import com.arist.eform.mis_equipment_approval.dto.QcReviewRequest;
 import com.arist.eform.mis_equipment_approval.dto.DisputeTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.ManagerCloseRequest;
 
+import com.arist.eform.mis_equipment_approval.model.TicketStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/tickets")
@@ -166,5 +173,28 @@ public class TicketController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(409).body(e.getMessage());
         }
+    }
+        @GetMapping
+    public ResponseEntity<?> getTickets(
+            @RequestParam(required = false) Integer applicantId,
+            @RequestParam(required = false) Integer technicianId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer departmentId) {
+
+        TicketStatus statusEnum = null;
+        if (status != null) {
+            try {
+                statusEnum = TicketStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("無效的狀態值: " + status);
+            }
+        }
+
+        List<Ticket> tickets = ticketService.getTickets(applicantId, technicianId, statusEnum, departmentId);
+        List<TicketResponse> responses = tickets.stream()
+                .map(TicketResponse::fromTicket)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responses);
     }
 }

@@ -394,4 +394,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 依照多個可選條件,查詢維修單清單
+    public List<Ticket> getTickets(Integer applicantId, Integer technicianId, TicketStatus status, Integer departmentId) {
+        return ticketRepository.findByFilters(applicantId, technicianId, status, departmentId);
+    }
 }

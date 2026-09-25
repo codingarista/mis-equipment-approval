@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
+import java.util.ArrayList;
+
 
 @Repository
 public class TicketRepository {
@@ -113,5 +115,69 @@ public class TicketRepository {
     public void managerClose(Integer ticketId, TicketStatus newStatus) {
         String sql = "UPDATE tickets SET status = ?, closed_at = NOW() WHERE id = ?";
         jdbcTemplate.update(sql, newStatus.name(), ticketId);
+    }
+        // 依照多個可選條件,動態查詢維修單清單
+    public List<Ticket> findByFilters(Integer applicantId, Integer technicianId, TicketStatus status, Integer departmentId) {
+
+        StringBuilder sql = new StringBuilder(
+            "SELECT t.id, t.equipment_id, t.applicant_id, t.current_technician_id, t.description, " +
+            "t.severity, t.status, t.repair_result, t.rejection_count, t.created_at, t.closed_at " +
+            "FROM tickets t "
+        );
+
+        if (departmentId != null) {
+            sql.append("JOIN equipment e ON t.equipment_id = e.id ");
+        }
+
+        List<Object> params = new ArrayList<>();
+        List<String> conditions = new ArrayList<>();
+
+        if (applicantId != null) {
+            conditions.add("t.applicant_id = ?");
+            params.add(applicantId);
+        }
+        if (technicianId != null) {
+            conditions.add("t.current_technician_id = ?");
+            params.add(technicianId);
+        }
+        if (status != null) {
+            conditions.add("t.status = ?");
+            params.add(status.name());
+        }
+        if (departmentId != null) {
+            conditions.add("e.department_id = ?");
+            params.add(departmentId);
+        }
+
+        if (!conditions.isEmpty()) {
+            sql.append("WHERE ").append(String.join(" AND ", conditions));
+        }
+
+        sql.append(" ORDER BY t.created_at DESC");
+
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> {
+            Ticket ticket = new Ticket();
+            ticket.setId(rs.getInt("id"));
+            ticket.setEquipmentId(rs.getInt("equipment_id"));
+            ticket.setApplicantId(rs.getInt("applicant_id"));
+
+            int technicianIdResult = rs.getInt("current_technician_id");
+            ticket.setCurrentTechnicianId(rs.wasNull() ? null : technicianIdResult);
+
+            ticket.setDescription(rs.getString("description"));
+            ticket.setSeverity(Severity.valueOf(rs.getString("severity")));
+            ticket.setStatus(TicketStatus.valueOf(rs.getString("status")));
+            ticket.setRepairResult(rs.getString("repair_result"));
+            ticket.setRejectionCount(rs.getInt("rejection_count"));
+
+            if (rs.getTimestamp("created_at") != null) {
+                ticket.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+            }
+            if (rs.getTimestamp("closed_at") != null) {
+                ticket.setClosedAt(rs.getTimestamp("closed_at").toLocalDateTime());
+            }
+
+            return ticket;
+        }, params.toArray());
     }
 }
