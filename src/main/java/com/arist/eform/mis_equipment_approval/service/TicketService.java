@@ -91,4 +91,31 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 認領單據:維修人員自行認領一張「待維修」的單
+    @Transactional
+    public Ticket claimTicket(Integer ticketId, Integer technicianId) {
+
+        // 步驟 1:確認單據存在
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        // 步驟 2:確認單據目前狀態允許被認領
+        if (ticket.getStatus() != TicketStatus.PENDING_REPAIR) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法被認領");
+        }
+
+        // 步驟 3:更新單據,設定技術員並轉換狀態
+        ticketRepository.claimTicket(ticketId, technicianId, TicketStatus.IN_PROGRESS);
+
+        // 步驟 4:新增簽核紀錄
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(technicianId);
+        log.setAction("TECH_CLAIM");
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
 }

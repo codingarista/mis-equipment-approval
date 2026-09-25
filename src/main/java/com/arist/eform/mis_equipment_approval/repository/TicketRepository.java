@@ -77,4 +77,9 @@ public class TicketRepository {
         }
         return results.get(0);
     }
+        // 認領單據:設定技術員 id,並更新狀態
+    public void claimTicket(Integer ticketId, Integer technicianId, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET current_technician_id = ?, status = ? WHERE id = ?";
+        jdbcTemplate.update(sql, technicianId, newStatus.name(), ticketId);
+    }
 }
