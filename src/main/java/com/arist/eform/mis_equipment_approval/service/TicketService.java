@@ -91,7 +91,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 認領單據:維修人員自行認領一張「待維修」的單
+
+    // 認領單據:維修人員自行認領一張「待維修」的單
     @Transactional
     public Ticket claimTicket(Integer ticketId, Integer technicianId) {
 
@@ -106,10 +107,16 @@ public class TicketService {
             throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法被認領");
         }
 
-        // 步驟 3:更新單據,設定技術員並轉換狀態
+        // 步驟 3:確認技術員存在
+        User technician = userRepository.findById(technicianId);
+        if (technician == null) {
+            throw new IllegalArgumentException("找不到指定的技術員");
+        }
+
+        // 步驟 4:更新單據,設定技術員並轉換狀態
         ticketRepository.claimTicket(ticketId, technicianId, TicketStatus.IN_PROGRESS);
 
-        // 步驟 4:新增簽核紀錄
+        // 步驟 5:新增簽核紀錄
         ApprovalLog log = new ApprovalLog();
         log.setTicketId(ticketId);
         log.setActorId(technicianId);
@@ -118,7 +125,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 維修人員處理完畢或退回
+
+    // 維修人員處理完畢或退回
     @Transactional
     public Ticket resolveTicket(Integer ticketId, Integer actorId, String action, String comment) {
 
@@ -171,7 +179,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 申請人撤回一張被退回的單
+
+    // 申請人撤回一張被退回的單
     @Transactional
     public Ticket withdrawTicket(Integer ticketId, Integer actorId) {
 
@@ -226,7 +235,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 品管審核
+
+    // 品管審核
     @Transactional
     public Ticket qcReview(Integer ticketId, Integer actorId, String repairResult, String comment) {
 
@@ -281,7 +291,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 申請人確認完成
+
+    // 申請人確認完成
     @Transactional
     public Ticket confirmTicket(Integer ticketId, Integer actorId) {
 
@@ -345,7 +356,8 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 經理結案
+
+    // 經理結案
     @Transactional
     public Ticket managerClose(Integer ticketId, Integer actorId, String comment) {
 
@@ -394,11 +406,13 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
-        // 依照多個可選條件,查詢維修單清單
+
+    // 依照多個可選條件,查詢維修單清單
     public List<Ticket> getTickets(Integer applicantId, Integer technicianId, TicketStatus status, Integer departmentId) {
         return ticketRepository.findByFilters(applicantId, technicianId, status, departmentId);
     }
-        // 查詢單一維修單
+
+    // 查詢單一維修單
     public Ticket getTicketById(Integer id) {
         return ticketRepository.findById(id);
     }
