@@ -87,4 +87,9 @@ public class TicketRepository {
         String sql = "UPDATE tickets SET status = ? WHERE id = ?";
         jdbcTemplate.update(sql, newStatus.name(), ticketId);
     }
+        // 修改重新提交:更新描述、嚴重程度,並把狀態轉回待維修
+    public void resubmit(Integer ticketId, String description, Severity severity, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET description = ?, severity = ?, status = ? WHERE id = ?";
+        jdbcTemplate.update(sql, description, severity.name(), newStatus.name(), ticketId);
+    }
 }

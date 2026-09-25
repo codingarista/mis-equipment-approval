@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.arist.eform.mis_equipment_approval.dto.ResolveTicketRequest;
-
+import com.arist.eform.mis_equipment_approval.dto.ResubmitTicketRequest;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -65,6 +65,38 @@ public class TicketController {
                 request.getActorId(),
                 request.getAction(),
                 request.getComment()
+            );
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+        @PatchMapping("/{id}/withdraw")
+    public ResponseEntity<?> withdrawTicket(@PathVariable Integer id,
+                                             @RequestBody ClaimTicketRequest request) {
+        try {
+            Ticket ticket = ticketService.withdrawTicket(id, request.getActorId());
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/resubmit")
+    public ResponseEntity<?> resubmitTicket(@PathVariable Integer id,
+                                             @RequestBody ResubmitTicketRequest request) {
+        try {
+            Ticket ticket = ticketService.resubmitTicket(
+                id,
+                request.getActorId(),
+                request.getDescription(),
+                request.getSeverity()
             );
             return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
 

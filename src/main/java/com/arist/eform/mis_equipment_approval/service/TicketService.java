@@ -171,4 +171,59 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 申請人撤回一張被退回的單
+    @Transactional
+    public Ticket withdrawTicket(Integer ticketId, Integer actorId) {
+
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        if (ticket.getStatus() != TicketStatus.RETURNED_TO_APPLICANT) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法撤回");
+        }
+
+        if (!ticket.getApplicantId().equals(actorId)) {
+            throw new IllegalStateException("只有原申請人本人,才能撤回這張單");
+        }
+
+        ticketRepository.updateStatus(ticketId, TicketStatus.WITHDRAWN);
+
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(actorId);
+        log.setAction("APPLICANT_WITHDRAW");
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
+
+    // 申請人修改內容後重新提交
+    @Transactional
+    public Ticket resubmitTicket(Integer ticketId, Integer actorId, String description, Severity severity) {
+
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        if (ticket.getStatus() != TicketStatus.RETURNED_TO_APPLICANT) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法重新提交");
+        }
+
+        if (!ticket.getApplicantId().equals(actorId)) {
+            throw new IllegalStateException("只有原申請人本人,才能重新提交這張單");
+        }
+
+        ticketRepository.resubmit(ticketId, description, severity, TicketStatus.PENDING_REPAIR);
+
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(actorId);
+        log.setAction("APPLICANT_RESUBMIT");
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
 }
