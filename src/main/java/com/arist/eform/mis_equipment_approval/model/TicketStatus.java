@@ -1,8 +1,6 @@
 package com.arist.eform.mis_equipment_approval.model;
 
 public enum TicketStatus {
-    PENDING_SUPERVISOR,      // 待主管簽核
-    REJECTED_BY_SUPERVISOR,  // 主管駁回(結束)
     PENDING_REPAIR,          // 待維修
     IN_PROGRESS,             // 維修人員處理中
     RETURNED_TO_APPLICANT,   // 維修人員退回給申請人
