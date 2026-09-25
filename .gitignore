@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# 暫時性手動測試檔案,不納入版本控制
+test.html
