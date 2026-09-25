@@ -82,4 +82,9 @@ public class TicketRepository {
         String sql = "UPDATE tickets SET current_technician_id = ?, status = ? WHERE id = ?";
         jdbcTemplate.update(sql, technicianId, newStatus.name(), ticketId);
     }
+        // 單純更新單據狀態,不影響其他欄位
+    public void updateStatus(Integer ticketId, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET status = ? WHERE id = ?";
+        jdbcTemplate.update(sql, newStatus.name(), ticketId);
+    }
 }

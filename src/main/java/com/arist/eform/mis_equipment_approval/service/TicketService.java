@@ -118,4 +118,57 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 維修人員處理完畢或退回
+    @Transactional
+    public Ticket resolveTicket(Integer ticketId, Integer actorId, String action, String comment) {
+
+        // 步驟 1:確認單據存在
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        // 步驟 2:確認單據狀態是「處理中」
+        if (ticket.getStatus() != TicketStatus.IN_PROGRESS) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法執行這個動作");
+        }
+
+        // 步驟 3:確認操作者就是被指派的技術員本人
+        if (!ticket.getCurrentTechnicianId().equals(actorId)) {
+            throw new IllegalStateException("只有負責處理這張單的技術員,才能執行這個動作");
+        }
+
+        // 步驟 4:依照 action 分流處理
+        if ("COMPLETE".equals(action)) {
+
+            ticketRepository.updateStatus(ticketId, TicketStatus.PENDING_QC);
+
+            ApprovalLog log = new ApprovalLog();
+            log.setTicketId(ticketId);
+            log.setActorId(actorId);
+            log.setAction("TECH_COMPLETE");
+            log.setComment(comment);
+            approvalLogRepository.insert(log);
+
+        } else if ("RETURN".equals(action)) {
+
+            if (comment == null || comment.isBlank()) {
+                throw new IllegalArgumentException("退回時必須填寫原因");
+            }
+
+            ticketRepository.updateStatus(ticketId, TicketStatus.RETURNED_TO_APPLICANT);
+
+            ApprovalLog log = new ApprovalLog();
+            log.setTicketId(ticketId);
+            log.setActorId(actorId);
+            log.setAction("TECH_RETURN");
+            log.setComment(comment);
+            approvalLogRepository.insert(log);
+
+        } else {
+            throw new IllegalArgumentException("無效的動作類型,只能是 COMPLETE 或 RETURN");
+        }
+
+        return ticketRepository.findById(ticketId);
+    }
 }
