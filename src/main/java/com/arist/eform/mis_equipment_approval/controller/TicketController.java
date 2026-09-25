@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.arist.eform.mis_equipment_approval.dto.ResolveTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.ResubmitTicketRequest;
+import com.arist.eform.mis_equipment_approval.dto.QcReviewRequest;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -97,6 +98,24 @@ public class TicketController {
                 request.getActorId(),
                 request.getDescription(),
                 request.getSeverity()
+            );
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+        @PatchMapping("/{id}/qc-review")
+    public ResponseEntity<?> qcReview(@PathVariable Integer id,
+                                       @RequestBody QcReviewRequest request) {
+        try {
+            Ticket ticket = ticketService.qcReview(
+                id,
+                request.getActorId(),
+                request.getRepairResult(),
+                request.getComment()
             );
             return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
 

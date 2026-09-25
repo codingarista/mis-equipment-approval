@@ -92,4 +92,9 @@ public class TicketRepository {
         String sql = "UPDATE tickets SET description = ?, severity = ?, status = ? WHERE id = ?";
         jdbcTemplate.update(sql, description, severity.name(), newStatus.name(), ticketId);
     }
+        // 品管審核:設定維修結果,並更新狀態
+    public void qcReview(Integer ticketId, String repairResult, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET repair_result = ?, status = ? WHERE id = ?";
+        jdbcTemplate.update(sql, repairResult, newStatus.name(), ticketId);
+    }
 }
