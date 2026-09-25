@@ -398,4 +398,8 @@ public class TicketService {
     public List<Ticket> getTickets(Integer applicantId, Integer technicianId, TicketStatus status, Integer departmentId) {
         return ticketRepository.findByFilters(applicantId, technicianId, status, departmentId);
     }
+        // 查詢單一維修單
+    public Ticket getTicketById(Integer id) {
+        return ticketRepository.findById(id);
+    }
 }

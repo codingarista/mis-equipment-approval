@@ -197,4 +197,12 @@ public class TicketController {
 
         return ResponseEntity.ok(responses);
     }
+        @GetMapping("/{id}")
+    public ResponseEntity<?> getTicketById(@PathVariable Integer id) {
+        Ticket ticket = ticketService.getTicketById(id);
+        if (ticket == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+    }
 }
