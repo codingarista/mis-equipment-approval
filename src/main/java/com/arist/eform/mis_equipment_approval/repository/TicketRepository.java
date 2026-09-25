@@ -97,4 +97,16 @@ public class TicketRepository {
         String sql = "UPDATE tickets SET repair_result = ?, status = ? WHERE id = ?";
         jdbcTemplate.update(sql, repairResult, newStatus.name(), ticketId);
     }
+        // 申請人確認完成:更新狀態並設定結案時間
+    public void confirmTicket(Integer ticketId) {
+        String sql = "UPDATE tickets SET status = ?, closed_at = NOW() WHERE id = ?";
+        jdbcTemplate.update(sql, TicketStatus.COMPLETED.name(), ticketId);
+    }
+
+    // 申請人駁回:駁回次數 +1,清空技術員,更新狀態
+    public void disputeTicket(Integer ticketId, TicketStatus newStatus) {
+        String sql = "UPDATE tickets SET rejection_count = rejection_count + 1, " +
+                     "current_technician_id = NULL, status = ? WHERE id = ?";
+        jdbcTemplate.update(sql, newStatus.name(), ticketId);
+    }
 }

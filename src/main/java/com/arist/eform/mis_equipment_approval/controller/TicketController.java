@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.arist.eform.mis_equipment_approval.dto.ResolveTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.ResubmitTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.QcReviewRequest;
+import com.arist.eform.mis_equipment_approval.dto.DisputeTicketRequest;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -117,6 +118,33 @@ public class TicketController {
                 request.getRepairResult(),
                 request.getComment()
             );
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+        @PatchMapping("/{id}/confirm")
+    public ResponseEntity<?> confirmTicket(@PathVariable Integer id,
+                                            @RequestBody ClaimTicketRequest request) {
+        try {
+            Ticket ticket = ticketService.confirmTicket(id, request.getActorId());
+            return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/dispute")
+    public ResponseEntity<?> disputeTicket(@PathVariable Integer id,
+                                            @RequestBody DisputeTicketRequest request) {
+        try {
+            Ticket ticket = ticketService.disputeTicket(id, request.getActorId(), request.getComment());
             return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
 
         } catch (IllegalArgumentException e) {

@@ -281,4 +281,68 @@ public class TicketService {
 
         return ticketRepository.findById(ticketId);
     }
+        // 申請人確認完成
+    @Transactional
+    public Ticket confirmTicket(Integer ticketId, Integer actorId) {
+
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        if (ticket.getStatus() != TicketStatus.NOTIFIED) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法確認");
+        }
+
+        if (!ticket.getApplicantId().equals(actorId)) {
+            throw new IllegalStateException("只有原申請人本人,才能確認這張單");
+        }
+
+        ticketRepository.confirmTicket(ticketId);
+
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(actorId);
+        log.setAction("APPLICANT_CONFIRM");
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
+
+    // 申請人駁回維修結果
+    @Transactional
+    public Ticket disputeTicket(Integer ticketId, Integer actorId, String comment) {
+
+        Ticket ticket = ticketRepository.findById(ticketId);
+        if (ticket == null) {
+            throw new IllegalArgumentException("找不到指定的維修單");
+        }
+
+        if (ticket.getStatus() != TicketStatus.NOTIFIED) {
+            throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法駁回");
+        }
+
+        if (!ticket.getApplicantId().equals(actorId)) {
+            throw new IllegalStateException("只有原申請人本人,才能駁回這張單");
+        }
+
+        if (comment == null || comment.isBlank()) {
+            throw new IllegalArgumentException("駁回時必須填寫原因");
+        }
+
+        // 判斷這次駁回後,次數是否達到升級標準
+        int newRejectionCount = ticket.getRejectionCount() + 1;
+        TicketStatus newStatus = (newRejectionCount >= 3) ? TicketStatus.ESCALATED : TicketStatus.PENDING_REPAIR;
+
+        ticketRepository.disputeTicket(ticketId, newStatus);
+
+        ApprovalLog log = new ApprovalLog();
+        log.setTicketId(ticketId);
+        log.setActorId(actorId);
+        log.setAction("APPLICANT_DISPUTE");
+        log.setComment(comment);
+        approvalLogRepository.insert(log);
+
+        return ticketRepository.findById(ticketId);
+    }
 }
