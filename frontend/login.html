@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>登入 - 設備維修簽核系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 320px;
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4a90d9;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3a7bc8;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="login-box">
+            <h1>設備維修簽核系統</h1>
+            <input v-model="username" type="text" placeholder="帳號">
+            <input v-model="password" type="password" placeholder="密碼">
+            <button @click="login">登入</button>
+            <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    username: '',
+                    password: '',
+                    errorMessage: ''
+                };
+            },
+            methods: {
+                async login() {
+                    this.errorMessage = '';
+                    try {
+                        const response = await fetch('http://localhost:8080/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                username: this.username,
+                                password: this.password
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            this.errorMessage = errorText;
+                            return;
+                        }
+
+                        const user = await response.json();
+
+                        localStorage.setItem('currentUser', JSON.stringify(user));
+
+                        // 依照角色導向不同頁面
+                        if (user.role === 'APPLICANT') {
+                            window.location.href = 'my-tickets.html';
+                        } else if (user.role === 'TECHNICIAN') {
+                            window.location.href = 'technician-tickets.html';
+                        } else if (user.role === 'QC') {
+                            window.location.href = 'qc-review.html';
+                        } else if (user.role === 'MANAGER') {
+                            window.location.href = 'manager-tickets.html';
+                        } else {
+                            alert('登入成功!歡迎 ' + user.fullName + '(' + user.role + '),此角色暫無對應頁面');
+                        }
+
+                    } catch (err) {
+                        this.errorMessage = '無法連接到伺服器';
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>

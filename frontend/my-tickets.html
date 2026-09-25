@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>我的單據 - 設備維修簽核系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4a90d9;
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: 24px auto;
+            padding: 0 16px;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4a90d9;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="header">
+            <div>設備維修簽核系統 — 我的單據</div>
+            <div>{{ currentUser ? currentUser.fullName : '' }}</div>
+        </div>
+
+        <div class="container">
+            <div class="toolbar">
+                <h2>我送出的維修單</h2>
+                <button @click="goCreate">+ 建立新單據</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>單號</th>
+                        <th>描述</th>
+                        <th>嚴重程度</th>
+                        <th>狀態</th>
+                        <th>建立時間</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="ticket in tickets" :key="ticket.id" @click="goDetail(ticket.id)">
+                        <td>{{ ticket.id }}</td>
+                        <td>{{ ticket.description }}</td>
+                        <td>{{ ticket.severity }}</td>
+                        <td><span class="status-badge" :style="{ backgroundColor: statusColor(ticket.status) }">{{ ticket.status }}</span></td>
+                        <td>{{ formatDate(ticket.createdAt) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p v-if="tickets.length === 0">目前沒有任何維修單</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentUser: null,
+                    tickets: []
+                };
+            },
+            async mounted() {
+                const stored = localStorage.getItem('currentUser');
+                if (!stored) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                this.currentUser = JSON.parse(stored);
+                await this.loadTickets();
+            },
+            methods: {
+                async loadTickets() {
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets?applicantId=' + this.currentUser.id
+                    );
+                    this.tickets = await response.json();
+                },
+                goCreate() {
+                    window.location.href = 'create-ticket.html';
+                },
+                goDetail(ticketId) {
+                    window.location.href = 'ticket-detail.html?id=' + ticketId;
+                },
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    return dateStr.replace('T', ' ').substring(0, 16);
+                },
+                statusColor(status) {
+                    const colors = {
+                        'PENDING_REPAIR': '#f0ad4e',
+                        'IN_PROGRESS': '#5bc0de',
+                        'RETURNED_TO_APPLICANT': '#d9534f',
+                        'WITHDRAWN': '#999',
+                        'PENDING_QC': '#5bc0de',
+                        'NOTIFIED': '#5cb85c',
+                        'COMPLETED': '#28a745',
+                        'ESCALATED': '#d9534f',
+                        'CLOSED_BY_MANAGER': '#6c757d'
+                    };
+                    return colors[status] || '#999';
+                }
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>

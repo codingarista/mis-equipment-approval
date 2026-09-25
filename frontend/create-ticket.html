@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>建立維修單 - 設備維修簽核系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4a90d9;
+            color: white;
+            padding: 16px 24px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 24px auto;
+            padding: 24px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 16px;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        select, textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .buttons {
+            margin-top: 24px;
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-submit {
+            background-color: #4a90d9;
+            color: white;
+        }
+        .btn-cancel {
+            background-color: #ccc;
+        }
+        .error {
+            color: red;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="header">設備維修簽核系統 — 建立維修單</div>
+
+        <div class="container">
+            <label>設備</label>
+            <select v-model="form.equipmentId">
+                <option value="">請選擇設備</option>
+                <option v-for="eq in equipmentList" :key="eq.id" :value="eq.id">
+                    {{ eq.equipment_no }} - {{ eq.name }}
+                </option>
+            </select>
+
+            <label>異常描述</label>
+            <textarea v-model="form.description" placeholder="請描述設備異常狀況"></textarea>
+
+            <label>嚴重程度</label>
+            <select v-model="form.severity">
+                <option value="LOW">輕微</option>
+                <option value="MEDIUM">中等</option>
+                <option value="HIGH">嚴重</option>
+            </select>
+
+            <div class="buttons">
+                <button class="btn-submit" @click="submit">送出</button>
+                <button class="btn-cancel" @click="cancel">取消</button>
+            </div>
+
+            <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentUser: null,
+                    equipmentList: [],
+                    form: {
+                        equipmentId: '',
+                        description: '',
+                        severity: 'LOW'
+                    },
+                    errorMessage: ''
+                };
+            },
+            async mounted() {
+                const stored = localStorage.getItem('currentUser');
+                if (!stored) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                this.currentUser = JSON.parse(stored);
+
+                const response = await fetch('http://localhost:8080/api/equipment');
+                this.equipmentList = await response.json();
+            },
+            methods: {
+                async submit() {
+                    this.errorMessage = '';
+
+                    if (!this.form.equipmentId || !this.form.description) {
+                        this.errorMessage = '請選擇設備並填寫異常描述';
+                        return;
+                    }
+
+                    const response = await fetch('http://localhost:8080/api/tickets', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            equipmentId: parseInt(this.form.equipmentId),
+                            applicantId: this.currentUser.id,
+                            description: this.form.description,
+                            severity: this.form.severity
+                        })
+                    });
+
+                    if (!response.ok) {
+                        this.errorMessage = await response.text();
+                        return;
+                    }
+
+                    window.location.href = 'my-tickets.html';
+                },
+                cancel() {
+                    window.location.href = 'my-tickets.html';
+                }
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>
