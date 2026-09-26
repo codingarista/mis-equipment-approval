@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>單據詳情 - 設備維修簽核系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #4a90d9;
+            color: white;
+            padding: 16px 24px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 24px auto;
+            padding: 24px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .field {
+            margin-bottom: 12px;
+        }
+        .field label {
+            font-weight: bold;
+            display: inline-block;
+            width: 100px;
+        }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: white;
+        }
+        .action-box {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            box-sizing: border-box;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-bottom: 12px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        .btn-confirm {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-dispute {
+            background-color: #d9534f;
+            color: white;
+        }
+        .btn-withdraw {
+            background-color: #999;
+            color: white;
+        }
+        .btn-resubmit {
+            background-color: #4a90d9;
+            color: white;
+        }
+        .btn-back {
+            background-color: #ccc;
+        }
+        .error {
+            color: red;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="header">設備維修簽核系統 — 單據詳情</div>
+
+        <div class="container" v-if="ticket">
+            <button class="btn-back" @click="goBack">← 返回列表</button>
+
+            <h2>單據 #{{ ticket.id }}</h2>
+
+            <div class="field"><label>設備編號:</label>{{ ticket.equipmentId }}</div>
+            <div class="field"><label>異常描述:</label>{{ ticket.description }}</div>
+            <div class="field"><label>嚴重程度:</label>{{ ticket.severity }}</div>
+            <div class="field">
+                <label>目前狀態:</label>
+                <span class="status-badge" :style="{ backgroundColor: statusColor(ticket.status) }">{{ ticket.status }}</span>
+            </div>
+            <div class="field" v-if="ticket.repairResult"><label>維修結果:</label>{{ ticket.repairResult }}</div>
+            <div class="field"><label>建立時間:</label>{{ ticket.createdAt }}</div>
+            <div class="field" v-if="ticket.closedAt"><label>結案時間:</label>{{ ticket.closedAt }}</div>
+            <div class="field"><label>駁回次數:</label>{{ ticket.rejectionCount }}</div>
+
+            <div class="action-box" v-if="ticket.status === 'NOTIFIED'">
+                <h3>請確認維修結果</h3>
+                <button class="btn-confirm" @click="confirm">確認,結案</button>
+                <button class="btn-dispute" @click="showDisputeForm = true">不滿意,駁回</button>
+
+                <div v-if="showDisputeForm" style="margin-top:16px;">
+                    <textarea v-model="disputeComment" placeholder="請說明不滿意的原因"></textarea>
+                    <button class="btn-dispute" @click="dispute">送出駁回</button>
+                </div>
+            </div>
+
+            <div class="action-box" v-if="ticket.status === 'RETURNED_TO_APPLICANT'">
+                <h3>維修人員已退回此單</h3>
+                <button class="btn-withdraw" @click="withdraw">撤回申請</button>
+                <button class="btn-resubmit" @click="showResubmitForm = true">修改後重新提交</button>
+
+                <div v-if="showResubmitForm" style="margin-top:16px;">
+                    <textarea v-model="resubmitDescription" :placeholder="ticket.description"></textarea>
+                    <button class="btn-resubmit" @click="resubmit">送出重新提交</button>
+                </div>
+            </div>
+
+            <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentUser: null,
+                    ticket: null,
+                    showDisputeForm: false,
+                    disputeComment: '',
+                    showResubmitForm: false,
+                    resubmitDescription: '',
+                    errorMessage: ''
+                };
+            },
+            async mounted() {
+                const stored = localStorage.getItem('currentUser');
+                if (!stored) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                this.currentUser = JSON.parse(stored);
+
+                const params = new URLSearchParams(window.location.search);
+                const ticketId = params.get('id');
+
+                await this.loadTicket(ticketId);
+            },
+            methods: {
+                async loadTicket(ticketId) {
+                    const response = await fetch('http://localhost:8080/api/tickets/' + ticketId);
+                    this.ticket = await response.json();
+                },
+                async confirm() {
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets/' + this.ticket.id + '/confirm',
+                        {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ actorId: this.currentUser.id })
+                        }
+                    );
+                    if (!response.ok) {
+                        this.errorMessage = await response.text();
+                        return;
+                    }
+                    window.location.href = 'my-tickets.html';
+                },
+                async dispute() {
+                    if (!this.disputeComment.trim()) {
+                        this.errorMessage = '請填寫駁回原因';
+                        return;
+                    }
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets/' + this.ticket.id + '/dispute',
+                        {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ actorId: this.currentUser.id, comment: this.disputeComment })
+                        }
+                    );
+                    if (!response.ok) {
+                        this.errorMessage = await response.text();
+                        return;
+                    }
+                    window.location.href = 'my-tickets.html';
+                },
+                async withdraw() {
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets/' + this.ticket.id + '/withdraw',
+                        {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ actorId: this.currentUser.id })
+                        }
+                    );
+                    if (!response.ok) {
+                        this.errorMessage = await response.text();
+                        return;
+                    }
+                    window.location.href = 'my-tickets.html';
+                },
+                async resubmit() {
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets/' + this.ticket.id + '/resubmit',
+                        {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                actorId: this.currentUser.id,
+                                description: this.resubmitDescription || this.ticket.description,
+                                severity: this.ticket.severity
+                            })
+                        }
+                    );
+                    if (!response.ok) {
+                        this.errorMessage = await response.text();
+                        return;
+                    }
+                    window.location.href = 'my-tickets.html';
+                },
+                goBack() {
+                    window.location.href = 'my-tickets.html';
+                },
+                statusColor(status) {
+                    const colors = {
+                        'PENDING_REPAIR': '#f0ad4e', 'IN_PROGRESS': '#5bc0de',
+                        'RETURNED_TO_APPLICANT': '#d9534f', 'WITHDRAWN': '#999',
+                        'PENDING_QC': '#5bc0de', 'NOTIFIED': '#5cb85c',
+                        'COMPLETED': '#28a745', 'ESCALATED': '#d9534f',
+                        'CLOSED_BY_MANAGER': '#6c757d'
+                    };
+                    return colors[status] || '#999';
+                }
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>
