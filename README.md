@@ -300,7 +300,7 @@ This is a full-stack equipment maintenance approval system built as a personal s
 
 **Highlights**:
 - A 9-state state machine covering the full lifecycle of a maintenance ticket, from submission to final closure, including a dispute-escalation mechanism (auto-escalates to a manager after 3 rejections).
-- Role-based access control across 4 operational roles (Applicant, Technician, QC, Manager), each scoped to their own department where applicable, plus a supervisor role with view-only access and status notifications.
+- Role-based access control across 5 operational roles (Applicant, Technician, QC, Manager, Supervisor), each scoped to their own department where applicable, plus a supervisor role with view-only access and status notifications.
 - Custom Token authentication with request interceptor, evolved from a simplified `actorId`-passing approach after discovering an authorization bypass vulnerability during testing.
 - All 5 possible workflow paths manually verified end-to-end, with results documented in the flowchart above.
 
