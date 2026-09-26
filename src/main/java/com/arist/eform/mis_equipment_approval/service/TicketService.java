@@ -107,10 +107,13 @@ public class TicketService {
             throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法被認領");
         }
 
-        // 步驟 3:確認技術員存在
+        // 步驟 3:確認技術員存在,且角色正確
         User technician = userRepository.findById(technicianId);
         if (technician == null) {
             throw new IllegalArgumentException("找不到指定的技術員");
+        }
+        if (technician.getRole() != Role.TECHNICIAN) {
+            throw new IllegalStateException("只有技術員才能認領維修單");
         }
 
         // 步驟 4:更新單據,設定技術員並轉換狀態
@@ -141,12 +144,21 @@ public class TicketService {
             throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法執行這個動作");
         }
 
-        // 步驟 3:確認操作者就是被指派的技術員本人
+        // 步驟 3:確認操作者存在,且角色正確
+        User actor = userRepository.findById(actorId);
+        if (actor == null) {
+            throw new IllegalArgumentException("找不到指定的操作者");
+        }
+        if (actor.getRole() != Role.TECHNICIAN) {
+            throw new IllegalStateException("只有技術員才能執行這個動作");
+        }
+
+        // 步驟 4:確認操作者就是被指派的技術員本人
         if (!ticket.getCurrentTechnicianId().equals(actorId)) {
             throw new IllegalStateException("只有負責處理這張單的技術員,才能執行這個動作");
         }
 
-        // 步驟 4:依照 action 分流處理
+        // 步驟 5:依照 action 分流處理
         if ("COMPLETE".equals(action)) {
 
             ticketRepository.updateStatus(ticketId, TicketStatus.PENDING_QC);
@@ -251,10 +263,13 @@ public class TicketService {
             throw new IllegalStateException("這張單目前的狀態是 " + ticket.getStatus() + ",無法進行品管審核");
         }
 
-        // 步驟 3:確認操作者存在
+        // 步驟 3:確認操作者存在,且角色正確
         User actor = userRepository.findById(actorId);
         if (actor == null) {
             throw new IllegalArgumentException("找不到指定的品管人員");
+        }
+        if (actor.getRole() != Role.QC) {
+            throw new IllegalStateException("只有品管人員才能執行審核");
         }
 
         // 步驟 4:確認設備存在,並比對部門
@@ -377,10 +392,13 @@ public class TicketService {
             throw new IllegalArgumentException("經理結案時必須填寫處理說明");
         }
 
-        // 步驟 4:確認操作者存在
+        // 步驟 4:確認操作者存在,且角色正確
         User actor = userRepository.findById(actorId);
         if (actor == null) {
             throw new IllegalArgumentException("找不到指定的經理");
+        }
+        if (actor.getRole() != Role.MANAGER) {
+            throw new IllegalStateException("只有經理才能處理升級單");
         }
 
         // 步驟 5:確認設備存在,並比對部門
