@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>技術員工作台 - 設備維修簽核系統</title>
+    <title>經理處理台 - 設備維修簽核系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
     <style>
         body {
@@ -23,9 +23,6 @@
             margin: 24px auto;
             padding: 0 16px;
         }
-        h2 {
-            margin-top: 32px;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -40,27 +37,14 @@
         th {
             background-color: #f0f0f0;
         }
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: white;
-        }
         button {
             padding: 6px 14px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             color: white;
-            margin-right: 4px;
         }
-        .btn-claim {
-            background-color: #4a90d9;
-        }
-        .btn-complete {
-            background-color: #28a745;
-        }
-        .btn-return {
+        .btn-close {
             background-color: #d9534f;
         }
         .empty {
@@ -79,21 +63,35 @@
             background: white;
             padding: 24px;
             border-radius: 8px;
-            width: 400px;
+            width: 450px;
         }
         textarea {
             width: 100%;
-            height: 80px;
+            height: 90px;
             box-sizing: border-box;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-family: inherit;
-            margin: 12px 0;
+            margin: 8px 0;
         }
         .error {
             color: red;
             margin-top: 8px;
+        }
+        .btn-submit {
+            background-color: #4a90d9;
+        }
+        .btn-cancel {
+            background-color: #ccc;
+        }
+        .rejection-count {
+            display: inline-block;
+            background-color: #d9534f;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -101,7 +99,7 @@
 
     <div id="app">
         <div class="header">
-            <div>設備維修簽核系統 — 技術員工作台</div>
+            <div>設備維修簽核系統 — 經理處理台</div>
             <div>
                 {{ currentUser ? currentUser.fullName : '' }}
                 <button @click="logout" style="margin-left:12px; background-color:#d9534f; padding:4px 10px;">登出</button>
@@ -109,65 +107,41 @@
         </div>
 
         <div class="container">
-            <h2>待維修清單</h2>
+            <h2>待處理升級單(本部門)</h2>
             <table>
                 <thead>
                     <tr>
                         <th>單號</th>
                         <th>設備 ID</th>
                         <th>描述</th>
-                        <th>嚴重程度</th>
+                        <th>駁回次數</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="ticket in pendingTickets" :key="ticket.id">
+                    <tr v-for="ticket in escalatedTickets" :key="ticket.id">
                         <td>{{ ticket.id }}</td>
                         <td>{{ ticket.equipmentId }}</td>
                         <td>{{ ticket.description }}</td>
-                        <td>{{ ticket.severity }}</td>
-                        <td><button class="btn-claim" @click="claim(ticket.id)">認領</button></td>
+                        <td><span class="rejection-count">{{ ticket.rejectionCount }} 次</span></td>
+                        <td><button class="btn-close" @click="openClose(ticket)">結案處理</button></td>
                     </tr>
                 </tbody>
             </table>
-            <p class="empty" v-if="pendingTickets.length === 0">目前沒有待維修的單據</p>
-
-            <h2>我正在處理的單據</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>單號</th>
-                        <th>設備 ID</th>
-                        <th>描述</th>
-                        <th>嚴重程度</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="ticket in myTickets" :key="ticket.id">
-                        <td>{{ ticket.id }}</td>
-                        <td>{{ ticket.equipmentId }}</td>
-                        <td>{{ ticket.description }}</td>
-                        <td>{{ ticket.severity }}</td>
-                        <td>
-                            <button class="btn-complete" @click="openResolve(ticket, 'COMPLETE')">完成</button>
-                            <button class="btn-return" @click="openResolve(ticket, 'RETURN')">退回</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <p class="empty" v-if="myTickets.length === 0">目前沒有處理中的單據</p>
+            <p class="empty" v-if="escalatedTickets.length === 0">目前沒有待處理的升級單</p>
         </div>
 
-        <div class="modal-overlay" v-if="resolveTarget">
+        <div class="modal-overlay" v-if="closeTarget">
             <div class="modal-box">
-                <h3>{{ resolveAction === 'COMPLETE' ? '標記維修完成' : '退回給申請人' }}</h3>
-                <p>單據 #{{ resolveTarget.id }}: {{ resolveTarget.description }}</p>
-                <textarea v-model="resolveComment" :placeholder="resolveAction === 'COMPLETE' ? '處理說明(選填)' : '請說明不維修原因(必填)'"></textarea>
+                <h3>經理結案</h3>
+                <p>單據 #{{ closeTarget.id }}: {{ closeTarget.description }}</p>
+                <p>此單已被申請人駁回 {{ closeTarget.rejectionCount }} 次,需要您做最終處理。</p>
+
+                <textarea v-model="closeComment" placeholder="請填寫最終處理說明(必填)"></textarea>
+
                 <div>
-                    <button class="btn-complete" v-if="resolveAction === 'COMPLETE'" @click="submitResolve">確定完成</button>
-                    <button class="btn-return" v-else @click="submitResolve">確定退回</button>
-                    <button @click="closeResolve" style="background-color:#ccc;">取消</button>
+                    <button class="btn-submit" @click="submitClose">確認結案</button>
+                    <button class="btn-cancel" @click="closeModal">取消</button>
                 </div>
                 <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
             </div>
@@ -181,11 +155,9 @@
             data() {
                 return {
                     currentUser: null,
-                    pendingTickets: [],
-                    myTickets: [],
-                    resolveTarget: null,
-                    resolveAction: null,
-                    resolveComment: '',
+                    escalatedTickets: [],
+                    closeTarget: null,
+                    closeComment: '',
                     errorMessage: ''
                 };
             },
@@ -200,43 +172,32 @@
             },
             methods: {
                 async loadData() {
-                    const pendingRes = await fetch('http://localhost:8080/api/tickets?status=PENDING_REPAIR');
-                    this.pendingTickets = await pendingRes.json();
-
-                    const myRes = await fetch('http://localhost:8080/api/tickets?technicianId=' + this.currentUser.id + '&status=IN_PROGRESS');
-                    this.myTickets = await myRes.json();
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets?status=ESCALATED&departmentId=' + this.currentUser.departmentId
+                    );
+                    this.escalatedTickets = await response.json();
                 },
-                async claim(ticketId) {
-                    const response = await fetch('http://localhost:8080/api/tickets/' + ticketId + '/claim', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ actorId: this.currentUser.id })
-                    });
-                    if (!response.ok) {
-                        alert(await response.text());
-                        return;
-                    }
-                    await this.loadData();
-                },
-                openResolve(ticket, action) {
-                    this.resolveTarget = ticket;
-                    this.resolveAction = action;
-                    this.resolveComment = '';
+                openClose(ticket) {
+                    this.closeTarget = ticket;
+                    this.closeComment = '';
                     this.errorMessage = '';
                 },
-                closeResolve() {
-                    this.resolveTarget = null;
+                closeModal() {
+                    this.closeTarget = null;
                 },
-                async submitResolve() {
+                async submitClose() {
+                    if (!this.closeComment.trim()) {
+                        this.errorMessage = '請填寫處理說明';
+                        return;
+                    }
                     const response = await fetch(
-                        'http://localhost:8080/api/tickets/' + this.resolveTarget.id + '/resolve',
+                        'http://localhost:8080/api/tickets/' + this.closeTarget.id + '/manager-close',
                         {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 actorId: this.currentUser.id,
-                                action: this.resolveAction,
-                                comment: this.resolveComment
+                                comment: this.closeComment
                             })
                         }
                     );
@@ -244,7 +205,7 @@
                         this.errorMessage = await response.text();
                         return;
                     }
-                    this.resolveTarget = null;
+                    this.closeTarget = null;
                     await this.loadData();
                 },
                 logout() {

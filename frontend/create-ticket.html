@@ -154,7 +154,11 @@
                 },
                 cancel() {
                     window.location.href = 'my-tickets.html';
-                }
+                },
+                logout() {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+}
             }
         }).mount('#app');
     </script>

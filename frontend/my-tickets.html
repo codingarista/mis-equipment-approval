@@ -68,9 +68,11 @@
     <div id="app">
         <div class="header">
             <div>設備維修簽核系統 — 我的單據</div>
-            <div>{{ currentUser ? currentUser.fullName : '' }}</div>
+            <div>
+                {{ currentUser ? currentUser.fullName : '' }}
+                <button @click="logout" style="margin-left:12px; background-color:#d9534f; padding:4px 10px;">登出</button>
+            </div>
         </div>
-
         <div class="container">
             <div class="toolbar">
                 <h2>我送出的維修單</h2>
@@ -151,7 +153,11 @@
                         'CLOSED_BY_MANAGER': '#6c757d'
                     };
                     return colors[status] || '#999';
-                }
+                },
+                logout() {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+}
             }
         }).mount('#app');
     </script>

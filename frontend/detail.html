@@ -245,7 +245,11 @@
                         'CLOSED_BY_MANAGER': '#6c757d'
                     };
                     return colors[status] || '#999';
-                }
+                },
+                logout() {
+                localStorage.clear();
+                window.location.href = 'login.html';
+}
             }
         }).mount('#app');
     </script>
