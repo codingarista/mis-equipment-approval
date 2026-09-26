@@ -9,16 +9,18 @@ public class LoginResponse {
     private String fullName;
     private Role role;
     private Integer departmentId;
+    private String token;
 
     public LoginResponse() {
     }
 
-    public LoginResponse(Integer id, String username, String fullName, Role role, Integer departmentId) {
+    public LoginResponse(Integer id, String username, String fullName, Role role, Integer departmentId, String token) {
         this.id = id;
         this.username = username;
         this.fullName = fullName;
         this.role = role;
         this.departmentId = departmentId;
+        this.token = token;
     }
 
     public Integer getId() {
@@ -59,5 +61,13 @@ public class LoginResponse {
 
     public void setDepartmentId(Integer departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }
