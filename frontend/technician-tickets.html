@@ -181,6 +181,7 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     pendingTickets: [],
                     myTickets: [],
                     resolveTarget: null,
@@ -191,26 +192,31 @@
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
                 await this.loadData();
             },
             methods: {
                 async loadData() {
-                    const pendingRes = await fetch('http://localhost:8080/api/tickets?status=PENDING_REPAIR');
+                    const pendingRes = await fetch('http://localhost:8080/api/tickets?status=PENDING_REPAIR', {
+                        headers: { 'Authorization': this.token }
+                    });
                     this.pendingTickets = await pendingRes.json();
 
-                    const myRes = await fetch('http://localhost:8080/api/tickets?technicianId=' + this.currentUser.id + '&status=IN_PROGRESS');
+                    const myRes = await fetch('http://localhost:8080/api/tickets?technicianId=' + this.currentUser.id + '&status=IN_PROGRESS', {
+                        headers: { 'Authorization': this.token }
+                    });
                     this.myTickets = await myRes.json();
                 },
                 async claim(ticketId) {
                     const response = await fetch('http://localhost:8080/api/tickets/' + ticketId + '/claim', {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ actorId: this.currentUser.id })
+                        headers: { 'Authorization': this.token }
                     });
                     if (!response.ok) {
                         alert(await response.text());
@@ -232,9 +238,11 @@
                         'http://localhost:8080/api/tickets/' + this.resolveTarget.id + '/resolve',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': this.token
+                            },
                             body: JSON.stringify({
-                                actorId: this.currentUser.id,
                                 action: this.resolveAction,
                                 comment: this.resolveComment
                             })

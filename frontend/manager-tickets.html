@@ -155,6 +155,7 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     escalatedTickets: [],
                     closeTarget: null,
                     closeComment: '',
@@ -163,17 +164,20 @@
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
                 await this.loadData();
             },
             methods: {
                 async loadData() {
                     const response = await fetch(
-                        'http://localhost:8080/api/tickets?status=ESCALATED&departmentId=' + this.currentUser.departmentId
+                        'http://localhost:8080/api/tickets?status=ESCALATED&departmentId=' + this.currentUser.departmentId,
+                        { headers: { 'Authorization': this.token } }
                     );
                     this.escalatedTickets = await response.json();
                 },
@@ -194,11 +198,11 @@
                         'http://localhost:8080/api/tickets/' + this.closeTarget.id + '/manager-close',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                actorId: this.currentUser.id,
-                                comment: this.closeComment
-                            })
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': this.token
+                            },
+                            body: JSON.stringify({ comment: this.closeComment })
                         }
                     );
                     if (!response.ok) {

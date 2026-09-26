@@ -154,6 +154,7 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     pendingTickets: [],
                     reviewTarget: null,
                     repairResult: 'REPAIRED',
@@ -163,17 +164,20 @@
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
                 await this.loadData();
             },
             methods: {
                 async loadData() {
                     const response = await fetch(
-                        'http://localhost:8080/api/tickets?status=PENDING_QC&departmentId=' + this.currentUser.departmentId
+                        'http://localhost:8080/api/tickets?status=PENDING_QC&departmentId=' + this.currentUser.departmentId,
+                        { headers: { 'Authorization': this.token } }
                     );
                     this.pendingTickets = await response.json();
                 },
@@ -191,9 +195,11 @@
                         'http://localhost:8080/api/tickets/' + this.reviewTarget.id + '/qc-review',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': this.token
+                            },
                             body: JSON.stringify({
-                                actorId: this.currentUser.id,
                                 repairResult: this.repairResult,
                                 comment: this.reviewComment
                             })
