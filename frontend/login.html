@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>登入 - 設備維修簽核系統</title>
+    <title>登入 - 設備維修申請系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
     <style>
         body {
@@ -58,7 +58,7 @@
 
     <div id="app">
         <div class="login-box">
-            <h1>設備維修簽核系統</h1>
+            <h1>設備維修申請系統</h1>
             <input v-model="username" type="text" placeholder="帳號">
             <input v-model="password" type="password" placeholder="密碼">
             <button @click="login">登入</button>
@@ -110,6 +110,8 @@
                             window.location.href = 'qc-review.html';
                         } else if (user.role === 'MANAGER') {
                             window.location.href = 'manager-tickets.html';
+                        } else if (user.role === 'SUPERVISOR') {
+                            window.location.href = 'supervisor-tickets.html';
                         } else {
                             alert('登入成功!歡迎 ' + user.fullName + '(' + user.role + '),此角色暫無對應頁面');
                         }

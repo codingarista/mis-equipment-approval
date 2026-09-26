@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>建立維修單 - 設備維修申請系統</title>
+    <title>主管檢視台 - 設備維修申請系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script>
     <style>
         body {
@@ -25,52 +25,37 @@
             position: relative;
         }
         .container {
-            max-width: 500px;
+            max-width: 900px;
             margin: 24px auto;
-            padding: 24px;
+            padding: 0 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
             background: white;
-            border-radius: 8px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
-        label {
-            display: block;
-            margin-top: 16px;
-            margin-bottom: 4px;
-            font-weight: bold;
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
         }
-        select, textarea {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
+        th {
+            background-color: #f0f0f0;
         }
-        textarea {
-            height: 100px;
-            resize: vertical;
-        }
-        .buttons {
-            margin-top: 24px;
-            display: flex;
-            gap: 8px;
-        }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
+        tr:hover {
+            background-color: #f9f9f9;
             cursor: pointer;
         }
-        .btn-submit {
-            background-color: #4a90d9;
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
             color: white;
         }
-        .btn-cancel {
-            background-color: #ccc;
-        }
-        .error {
-            color: red;
-            margin-top: 12px;
+        .empty {
+            color: #999;
+            padding: 16px 0;
         }
         .bell-btn {
             background-color: rgba(255,255,255,0.2);
@@ -79,6 +64,7 @@
             border-radius: 4px;
             padding: 8px 16px;
             cursor: pointer;
+            color: white;
         }
         .badge {
             position: absolute;
@@ -128,12 +114,14 @@
 
     <div id="app">
         <div class="header">
-            <div>設備維修申請系統 — 建立維修單</div>
+            <div>設備維修申請系統 — 主管檢視台</div>
             <div class="header-right">
+                {{ currentUser ? currentUser.fullName : '' }}
                 <button class="bell-btn" @click="toggleNotifications">
                     🔔
                     <span class="badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
                 </button>
+                <button @click="logout" style="background-color:#d9534f; padding:4px 10px; border:none; border-radius:4px; cursor:pointer; color:white;">登出</button>
 
                 <div class="notif-panel" v-if="showNotifications">
                     <div class="notif-item" :class="{ unread: !n.isRead }" v-for="n in notifications" :key="n.id" @click="openNotification(n)">
@@ -145,30 +133,30 @@
         </div>
 
         <div class="container">
-            <label>設備</label>
-            <select v-model="form.equipmentId">
-                <option value="">請選擇設備</option>
-                <option v-for="eq in equipmentList" :key="eq.id" :value="eq.id">
-                    {{ eq.equipment_no }} - {{ eq.name }}
-                </option>
-            </select>
-
-            <label>異常描述</label>
-            <textarea v-model="form.description" placeholder="請描述設備異常狀況"></textarea>
-
-            <label>嚴重程度</label>
-            <select v-model="form.severity">
-                <option value="LOW">輕微</option>
-                <option value="MEDIUM">中等</option>
-                <option value="HIGH">嚴重</option>
-            </select>
-
-            <div class="buttons">
-                <button class="btn-submit" @click="submit">送出</button>
-                <button class="btn-cancel" @click="cancel">取消</button>
-            </div>
-
-            <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
+            <h2>部門內維修單(僅供檢視)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>單號</th>
+                        <th>設備 ID</th>
+                        <th>描述</th>
+                        <th>嚴重程度</th>
+                        <th>狀態</th>
+                        <th>建立時間</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="ticket in tickets" :key="ticket.id" @click="goDetail(ticket.id)">
+                        <td>{{ ticket.id }}</td>
+                        <td>{{ ticket.equipmentId }}</td>
+                        <td>{{ ticket.description }}</td>
+                        <td>{{ ticket.severity }}</td>
+                        <td><span class="status-badge" :style="{ backgroundColor: statusColor(ticket.status) }">{{ ticket.status }}</span></td>
+                        <td>{{ formatDate(ticket.createdAt) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="empty" v-if="tickets.length === 0">目前部門內沒有任何維修單</p>
         </div>
     </div>
 
@@ -180,16 +168,10 @@
                 return {
                     currentUser: null,
                     token: null,
-                    equipmentList: [],
+                    tickets: [],
                     notifications: [],
                     unreadCount: 0,
-                    showNotifications: false,
-                    form: {
-                        equipmentId: '',
-                        description: '',
-                        severity: 'LOW'
-                    },
-                    errorMessage: ''
+                    showNotifications: false
                 };
             },
             async mounted() {
@@ -201,14 +183,17 @@
                 }
                 this.currentUser = JSON.parse(stored);
                 this.token = token;
-
-                const response = await fetch('http://localhost:8080/api/equipment', {
-                    headers: { 'Authorization': this.token }
-                });
-                this.equipmentList = await response.json();
+                await this.loadTickets();
                 await this.loadUnreadCount();
             },
             methods: {
+                async loadTickets() {
+                    const response = await fetch(
+                        'http://localhost:8080/api/tickets?departmentId=' + this.currentUser.departmentId,
+                        { headers: { 'Authorization': this.token } }
+                    );
+                    this.tickets = await response.json();
+                },
                 async loadUnreadCount() {
                     const response = await fetch('http://localhost:8080/api/notifications/unread-count', {
                         headers: { 'Authorization': this.token }
@@ -237,40 +222,26 @@
                     }
                     window.location.href = 'detail.html?id=' + notification.ticketId;
                 },
+                goDetail(ticketId) {
+                    window.location.href = 'detail.html?id=' + ticketId;
+                },
                 formatDate(dateStr) {
                     if (!dateStr) return '';
                     return dateStr.replace('T', ' ').substring(0, 16);
                 },
-                async submit() {
-                    this.errorMessage = '';
-
-                    if (!this.form.equipmentId || !this.form.description) {
-                        this.errorMessage = '請選擇設備並填寫異常描述';
-                        return;
-                    }
-
-                    const response = await fetch('http://localhost:8080/api/tickets', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': this.token
-                        },
-                        body: JSON.stringify({
-                            equipmentId: parseInt(this.form.equipmentId),
-                            description: this.form.description,
-                            severity: this.form.severity
-                        })
-                    });
-
-                    if (!response.ok) {
-                        this.errorMessage = await response.text();
-                        return;
-                    }
-
-                    window.location.href = 'my-tickets.html';
+                statusColor(status) {
+                    const colors = {
+                        'PENDING_REPAIR': '#f0ad4e', 'IN_PROGRESS': '#5bc0de',
+                        'RETURNED_TO_APPLICANT': '#d9534f', 'WITHDRAWN': '#999',
+                        'PENDING_QC': '#5bc0de', 'NOTIFIED': '#5cb85c',
+                        'COMPLETED': '#28a745', 'ESCALATED': '#d9534f',
+                        'CLOSED_BY_MANAGER': '#6c757d'
+                    };
+                    return colors[status] || '#999';
                 },
-                cancel() {
-                    window.location.href = 'my-tickets.html';
+                logout() {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
                 }
             }
         }).mount('#app');

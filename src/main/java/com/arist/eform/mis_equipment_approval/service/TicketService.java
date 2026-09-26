@@ -39,6 +39,17 @@ public class TicketService {
         this.userRepository = userRepository;
     }
 
+    // 共用方法:通知某個部門的所有主管
+    private void notifySupervisors(Integer departmentId, Integer ticketId) {
+        List<User> supervisors = userRepository.findByDepartmentIdAndRole(departmentId, Role.SUPERVISOR);
+        for (User supervisor : supervisors) {
+            Notification notification = new Notification();
+            notification.setTicketId(ticketId);
+            notification.setRecipientId(supervisor.getId());
+            notificationRepository.insert(notification);
+        }
+    }
+
     @Transactional
     public Ticket createTicket(Integer equipmentId, Integer applicantId, String description, Severity severity) {
 
@@ -80,14 +91,8 @@ public class TicketService {
             notificationRepository.insert(custodianNotification);
         }
 
-        // 步驟 6:通知申請人同部門的所有主管(僅供知會,類似 mail 副本)
-        List<User> supervisors = userRepository.findByDepartmentIdAndRole(applicant.getDepartmentId(), Role.SUPERVISOR);
-        for (User supervisor : supervisors) {
-            Notification supervisorNotification = new Notification();
-            supervisorNotification.setTicketId(ticketId);
-            supervisorNotification.setRecipientId(supervisor.getId());
-            notificationRepository.insert(supervisorNotification);
-        }
+        // 步驟 6:通知申請人同部門的所有主管(第一次提交,僅供知會)
+        notifySupervisors(applicant.getDepartmentId(), ticketId);
 
         return ticketRepository.findById(ticketId);
     }
@@ -332,6 +337,12 @@ public class TicketService {
         log.setAction("APPLICANT_CONFIRM");
         approvalLogRepository.insert(log);
 
+        // 通知同部門主管:單據已正常結案
+        Equipment equipment = equipmentRepository.findById(ticket.getEquipmentId());
+        if (equipment != null) {
+            notifySupervisors(equipment.getDepartmentId(), ticketId);
+        }
+
         return ticketRepository.findById(ticketId);
     }
 
@@ -421,6 +432,9 @@ public class TicketService {
         log.setAction("MANAGER_CLOSE");
         log.setComment(comment);
         approvalLogRepository.insert(log);
+
+        // 步驟 8:通知同部門主管:升級單已由經理結案
+        notifySupervisors(equipment.getDepartmentId(), ticketId);
 
         return ticketRepository.findById(ticketId);
     }
