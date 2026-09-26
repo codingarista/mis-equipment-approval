@@ -18,6 +18,12 @@
             justify-content: space-between;
             align-items: center;
         }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
         .container {
             max-width: 900px;
             margin: 24px auto;
@@ -87,6 +93,57 @@
         .btn-cancel {
             background-color: #ccc;
         }
+        .bell-btn {
+            background-color: rgba(255,255,255,0.2);
+            position: relative;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: white;
+        }
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background-color: #d9534f;
+            color: white;
+            border-radius: 10px;
+            font-size: 11px;
+            padding: 1px 6px;
+        }
+        .notif-panel {
+            position: absolute;
+            top: 44px;
+            right: 0;
+            width: 320px;
+            background: white;
+            color: #333;
+            border-radius: 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .notif-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .notif-item:hover {
+            background-color: #f5f5f5;
+        }
+        .notif-item.unread {
+            font-weight: bold;
+            background-color: #eef5ff;
+        }
+        .notif-empty {
+            padding: 16px;
+            color: #999;
+            text-align: center;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -94,9 +151,20 @@
     <div id="app">
         <div class="header">
             <div>設備維修簽核系統 — 品管審核</div>
-            <div>
+            <div class="header-right">
                 {{ currentUser ? currentUser.fullName : '' }}
-                <button @click="logout" style="margin-left:12px; background-color:#d9534f; padding:4px 10px;">登出</button>
+                <button class="bell-btn" @click="toggleNotifications">
+                    🔔
+                    <span class="badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
+                </button>
+                <button @click="logout" style="background-color:#d9534f; padding:4px 10px; border:none; border-radius:4px; cursor:pointer; color:white;">登出</button>
+
+                <div class="notif-panel" v-if="showNotifications">
+                    <div class="notif-item" :class="{ unread: !n.isRead }" v-for="n in notifications" :key="n.id" @click="openNotification(n)">
+                        單據 #{{ n.ticketId }} 有更新 · {{ formatDate(n.createdAt) }}
+                    </div>
+                    <div class="notif-empty" v-if="notifications.length === 0">目前沒有通知</div>
+                </div>
             </div>
         </div>
 
@@ -156,6 +224,9 @@
                     currentUser: null,
                     token: null,
                     pendingTickets: [],
+                    notifications: [],
+                    unreadCount: 0,
+                    showNotifications: false,
                     reviewTarget: null,
                     repairResult: 'REPAIRED',
                     reviewComment: '',
@@ -172,6 +243,7 @@
                 this.currentUser = JSON.parse(stored);
                 this.token = token;
                 await this.loadData();
+                await this.loadUnreadCount();
             },
             methods: {
                 async loadData() {
@@ -180,6 +252,38 @@
                         { headers: { 'Authorization': this.token } }
                     );
                     this.pendingTickets = await response.json();
+                },
+                async loadUnreadCount() {
+                    const response = await fetch('http://localhost:8080/api/notifications/unread-count', {
+                        headers: { 'Authorization': this.token }
+                    });
+                    const data = await response.json();
+                    this.unreadCount = data.unreadCount;
+                },
+                async loadNotifications() {
+                    const response = await fetch('http://localhost:8080/api/notifications', {
+                        headers: { 'Authorization': this.token }
+                    });
+                    this.notifications = await response.json();
+                },
+                async toggleNotifications() {
+                    this.showNotifications = !this.showNotifications;
+                    if (this.showNotifications) {
+                        await this.loadNotifications();
+                    }
+                },
+                async openNotification(notification) {
+                    if (!notification.isRead) {
+                        await fetch('http://localhost:8080/api/notifications/' + notification.id + '/read', {
+                            method: 'PATCH',
+                            headers: { 'Authorization': this.token }
+                        });
+                    }
+                    window.location.href = 'detail.html?id=' + notification.ticketId;
+                },
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    return dateStr.replace('T', ' ').substring(0, 16);
                 },
                 openReview(ticket) {
                     this.reviewTarget = ticket;
