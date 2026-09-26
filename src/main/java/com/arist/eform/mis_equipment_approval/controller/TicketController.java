@@ -213,16 +213,28 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTicketById(@PathVariable Integer id) {
+    public ResponseEntity<?> getTicketById(@PathVariable Integer id, HttpServletRequest httpRequest) {
         Ticket ticket = ticketService.getTicketById(id);
         if (ticket == null) {
             return ResponseEntity.notFound().build();
+        }
+        User user = currentUser(httpRequest);
+        if (!ticketService.canViewTicket(ticket, user)) {
+            return ResponseEntity.status(403).body("您沒有權限檢視這張單據");
         }
         return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
     }
 
     @GetMapping("/{id}/logs")
-    public ResponseEntity<?> getTicketLogs(@PathVariable Integer id) {
+    public ResponseEntity<?> getTicketLogs(@PathVariable Integer id, HttpServletRequest httpRequest) {
+        Ticket ticket = ticketService.getTicketById(id);
+        if (ticket == null) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = currentUser(httpRequest);
+        if (!ticketService.canViewTicket(ticket, user)) {
+            return ResponseEntity.status(403).body("您沒有權限檢視這張單據");
+        }
         List<ApprovalLog> logs = approvalLogRepository.findByTicketId(id);
         return ResponseEntity.ok(logs);
     }

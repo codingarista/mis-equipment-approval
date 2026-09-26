@@ -185,6 +185,11 @@
             </div>
         </div>
 
+        <div class="container" v-if="loadError">
+            <p style="color:#d9534f; font-size:16px;">⚠️ {{ loadError }}</p>
+            <button class="btn-back" @click="goBack">← 返回列表</button>
+        </div>
+
         <div class="container" v-if="ticket">
             <button class="btn-back" @click="goBack">← 返回列表</button>
 
@@ -202,7 +207,7 @@
             <div class="field" v-if="ticket.closedAt"><label>結案時間:</label>{{ ticket.closedAt }}</div>
             <div class="field"><label>駁回次數:</label>{{ ticket.rejectionCount }}</div>
 
-            <div class="action-box" v-if="ticket.status === 'NOTIFIED'">
+            <div class="action-box" v-if="ticket.status === 'NOTIFIED' && ticket.applicantId === currentUser.id">
                 <h3>請確認維修結果</h3>
                 <button class="btn-confirm" @click="confirm">確認,結案</button>
                 <button class="btn-dispute" @click="showDisputeForm = true">不滿意,駁回</button>
@@ -213,7 +218,7 @@
                 </div>
             </div>
 
-            <div class="action-box" v-if="ticket.status === 'RETURNED_TO_APPLICANT'">
+            <div class="action-box" v-if="ticket.status === 'RETURNED_TO_APPLICANT' && ticket.applicantId === currentUser.id">
                 <h3>維修人員已退回此單</h3>
                 <button class="btn-withdraw" @click="withdraw">撤回申請</button>
                 <button class="btn-resubmit" @click="showResubmitForm = true">修改後重新提交</button>
@@ -256,7 +261,8 @@
                     disputeComment: '',
                     showResubmitForm: false,
                     resubmitDescription: '',
-                    errorMessage: ''
+                    errorMessage: '',
+                    loadError: ''
                 };
             },
             async mounted() {
@@ -288,6 +294,10 @@
                     const response = await fetch('http://localhost:8080/api/tickets/' + ticketId, {
                         headers: { 'Authorization': this.token }
                     });
+                    if (!response.ok) {
+                        this.loadError = await response.text();
+                        return;
+                    }
                     this.ticket = await response.json();
                 },
                 async loadLogs(ticketId) {

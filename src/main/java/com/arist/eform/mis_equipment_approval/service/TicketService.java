@@ -448,4 +448,30 @@ public class TicketService {
     public Ticket getTicketById(Integer id) {
         return ticketRepository.findById(id);
     }
+
+    // 判斷這位使用者,是否有資格檢視這張單據
+    public boolean canViewTicket(Ticket ticket, User user) {
+        switch (user.getRole()) {
+            case APPLICANT:
+                return ticket.getApplicantId().equals(user.getId());
+
+            case TECHNICIAN:
+                boolean unclaimed = ticket.getStatus() == TicketStatus.PENDING_REPAIR;
+                boolean handledByMe = ticket.getCurrentTechnicianId() != null
+                        && ticket.getCurrentTechnicianId().equals(user.getId());
+                return unclaimed || handledByMe;
+
+            case QC:
+            case MANAGER:
+            case SUPERVISOR:
+                Equipment equipment = equipmentRepository.findById(ticket.getEquipmentId());
+                return equipment != null && equipment.getDepartmentId().equals(user.getDepartmentId());
+
+            case ADMIN:
+                return true;
+
+            default:
+                return false;
+        }
+    }
 }
