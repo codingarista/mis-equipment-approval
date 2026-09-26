@@ -8,11 +8,11 @@
 
 ## 系統簡介
 
-本系統是一套設備維修申請系統,模擬企業內部真實的維修申請流程,涵蓋四種角色:**申請人**(發現設備異常、提出申請,並在維修完成後確認結果或提出異議)、**技術員**(認領並處理維修,可標記完成或退回)、**品管**(審核維修結果的品質,判定為已維修或建議報廢)、**經理**(處理申請人對維修結果反覆駁回、升級後的最終爭議案件)。
+本系統是一套設備維修申請系統,模擬企業內部真實的維修申請流程,涵蓋四種操作角色:**申請人**(發現設備異常、提出申請,並在維修完成後確認結果或提出異議)、**技術員**(認領並處理維修,可標記完成或退回)、**品管**(審核維修結果的品質,判定為已維修或建議報廢)、**經理**(處理申請人對維修結果反覆駁回、升級後的最終爭議案件),另設有**主管**角色,僅供部門內設備狀況檢視與知會通知。
 
 系統設計了完整的狀態機,涵蓋從申請提交、認領處理、品管審核、申請人確認,到爭議升級與最終結案的 9 種狀態轉換,並針對品管與經理的審核權限,加入部門範圍限制,確保跨部門的資料不會被誤觸。
 
-## 技術棧
+## 使用技術 Tech Stack
 
 **後端**
 - Java 25 + Spring Boot 4.1.1
@@ -135,7 +135,7 @@ erDiagram
 |---|---|
 | 駁回滿 3 次才升級給經理,不是 1 次或無限次 | 平衡「申請人有申訴空間」與「流程不能無限循環」,3 次是常見的業界慣例折衷點 |
 | 品管與經理的審核範圍限定同部門 | 避免跨部門誤觸不熟悉的設備資訊,是最小權限原則的體現 |
-| 主管只收知會通知,不參與流程審批 | 簡化流程,同時主管能掌握部門內設備狀況 |
+| 主管僅具檢視權限,不參與流程審批 | 簡化流程,同時主管能透過專屬頁面掌握部門內設備狀況,並於單據提交與結案時收到通知 |
 | 採用自建 Token 機制,而非傳統 Session | 前後端分離架構下,Token 不依賴伺服器端保存連線狀態,更適合純 API 形式的後端設計 |
 | 前端用 Vue 3 CDN 引入,而非 Vite 建置工具鏈 | 降低開發環境的複雜度與風險,聚焦在核心邏輯與框架語法的掌握 |
 
@@ -189,7 +189,7 @@ erDiagram
 
 | 方法 | 路徑 | 說明 |
 |---|---|---|
-| GET | `/api/tickets` | 彈性查詢維修單清單(支援多條件篩選) |
+| GET | `/api/tickets` | 彈性查詢維修單清單(支援多條件篩選,含依部門查詢) |
 | GET | `/api/tickets/{id}` | 查詢單一維修單詳情 |
 | GET | `/api/tickets/{id}/logs` | 查詢單一維修單的完整簽核歷程 |
 | GET | `/api/departments` | 查詢部門清單 |
@@ -236,6 +236,16 @@ erDiagram
 
 - **通知僅支援站內顯示,無 Email / 即時推播**:通知功能僅在使用者登入系統後,透過畫面上的通知鈴鐺呈現,未整合 Email 通知或 WebSocket 即時推播。Email 通知需額外串接郵件伺服器,即時推播則需建立長連線機制,兩者皆屬於獨立的基礎建設,考量本專案聚焦於簽核流程與身份驗證的核心設計,暫不列入開發範圍。
 
+## 未來可擴展方向
+
+- **Email / 即時推播通知**:目前通知僅限站內顯示,未來可串接 SMTP 郵件伺服器,讓使用者即使未登入系統,也能透過 Email 收到單據狀態異動通知;或導入 WebSocket 實現即時推播,取代目前登入後才能查看的被動式通知。
+
+- **ADMIN 角色功能擴充**:資料庫已保留 `ADMIN` 角色,未來可擴充管理介面,例如使用者帳號啟用/停用、單據強制關閉等管理功能。
+
+- **Token 機制正式化**:目前 Token 儲存於伺服器記憶體,未來可改採標準 JWT 機制,或串接 Redis 等外部儲存,支援水平擴展與服務重啟後的登入狀態保留。
+
+- **報表與統計功能**:目前系統著重於單一單據的完整生命週期,未來可加入跨單據的統計報表,例如各設備異常次數、各部門平均結案天數等,展現 SQL 的 `GROUP BY`、子查詢等進階應用。
+
 ## 如何在本機執行
 
 **環境需求**
@@ -272,14 +282,16 @@ erDiagram
 | ron_c | password123 | 技術員 | 資訊部 |
 | dumbledore_d | password123 | 品管 | 資訊部 |
 | mcgonagall_e | password123 | 經理 | 資訊部 |
+| hermione_b | password123 | 主管 | 資訊部 |
 | draco_g | password123 | 申請人 | 設備部 |
 | neville_i | password123 | 技術員 | 設備部 |
 | sirius_j | password123 | 品管 | 設備部 |
 | lupin_k | password123 | 經理 | 設備部 |
+| luna_h | password123 | 主管 | 設備部 |
 
 ---
 
-## English Summary
+## Summary
 
 This is a full-stack equipment maintenance approval system built as a personal side project, based on real-world observations from my previous role as a test engineer, where manual paper-based maintenance requests were time-consuming and lacked transparency.
 
@@ -287,7 +299,7 @@ This is a full-stack equipment maintenance approval system built as a personal s
 
 **Highlights**:
 - A 9-state state machine covering the full lifecycle of a maintenance ticket, from submission to final closure, including a dispute-escalation mechanism (auto-escalates to a manager after 3 rejections).
-- Role-based access control across 4 roles (Applicant, Technician, QC, Manager), each scoped to their own department where applicable.
+- Role-based access control across 4 operational roles (Applicant, Technician, QC, Manager), each scoped to their own department where applicable, plus a supervisor role with view-only access and status notifications.
 - Custom Token authentication with request interceptor, evolved from a simplified `actorId`-passing approach after discovering an authorization bypass vulnerability during testing.
 - All 5 possible workflow paths manually verified end-to-end, with results documented in the flowchart above.
 
