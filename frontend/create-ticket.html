@@ -105,6 +105,7 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     equipmentList: [],
                     form: {
                         equipmentId: '',
@@ -116,13 +117,17 @@
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
 
-                const response = await fetch('http://localhost:8080/api/equipment');
+                const response = await fetch('http://localhost:8080/api/equipment', {
+                    headers: { 'Authorization': this.token }
+                });
                 this.equipmentList = await response.json();
             },
             methods: {
@@ -136,10 +141,12 @@
 
                     const response = await fetch('http://localhost:8080/api/tickets', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': this.token
+                        },
                         body: JSON.stringify({
                             equipmentId: parseInt(this.form.equipmentId),
-                            applicantId: this.currentUser.id,
                             description: this.form.description,
                             severity: this.form.severity
                         })
@@ -154,11 +161,7 @@
                 },
                 cancel() {
                     window.location.href = 'my-tickets.html';
-                },
-                logout() {
-                    localStorage.clear();
-                    window.location.href = 'login.html';
-}
+                }
             }
         }).mount('#app');
     </script>

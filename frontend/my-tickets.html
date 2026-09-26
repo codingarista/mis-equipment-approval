@@ -111,22 +111,26 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     tickets: []
                 };
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
                 await this.loadTickets();
             },
             methods: {
                 async loadTickets() {
                     const response = await fetch(
-                        'http://localhost:8080/api/tickets?applicantId=' + this.currentUser.id
+                        'http://localhost:8080/api/tickets?applicantId=' + this.currentUser.id,
+                        { headers: { 'Authorization': this.token } }
                     );
                     this.tickets = await response.json();
                 },
@@ -157,7 +161,7 @@
                 logout() {
                     localStorage.clear();
                     window.location.href = 'login.html';
-}
+                }
             }
         }).mount('#app');
     </script>

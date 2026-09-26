@@ -98,6 +98,7 @@
 
                         const user = await response.json();
 
+                        localStorage.setItem('token', user.token);
                         localStorage.setItem('currentUser', JSON.stringify(user));
 
                         // 依照角色導向不同頁面

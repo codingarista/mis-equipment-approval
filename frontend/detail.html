@@ -82,6 +82,32 @@
             color: red;
             margin-top: 12px;
         }
+        .history-section {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        .history-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        .history-action {
+            font-weight: bold;
+            color: #4a90d9;
+        }
+        .history-meta {
+            color: #999;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .history-comment {
+            margin-top: 4px;
+            color: #333;
+            background-color: #f9f9f9;
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -129,6 +155,16 @@
             </div>
 
             <div class="error" v-if="errorMessage">{{ errorMessage }}</div>
+
+            <div class="history-section">
+                <h3>簽核歷程</h3>
+                <div class="history-item" v-for="log in logs" :key="log.id">
+                    <div class="history-action">{{ actionLabel(log.action) }}</div>
+                    <div class="history-meta">{{ actorName(log.actorId) }} · {{ formatDate(log.createdAt) }}</div>
+                    <div class="history-comment" v-if="log.comment">{{ log.comment }}</div>
+                </div>
+                <p v-if="logs.length === 0" style="color:#999;">尚無歷程紀錄</p>
+            </div>
         </div>
     </div>
 
@@ -139,7 +175,10 @@
             data() {
                 return {
                     currentUser: null,
+                    token: null,
                     ticket: null,
+                    logs: [],
+                    users: [],
                     showDisputeForm: false,
                     disputeComment: '',
                     showResubmitForm: false,
@@ -149,29 +188,46 @@
             },
             async mounted() {
                 const stored = localStorage.getItem('currentUser');
-                if (!stored) {
+                const token = localStorage.getItem('token');
+                if (!stored || !token) {
                     window.location.href = 'login.html';
                     return;
                 }
                 this.currentUser = JSON.parse(stored);
+                this.token = token;
 
                 const params = new URLSearchParams(window.location.search);
                 const ticketId = params.get('id');
 
+                await this.loadUsers();
                 await this.loadTicket(ticketId);
+                await this.loadLogs(ticketId);
             },
             methods: {
+                async loadUsers() {
+                    const response = await fetch('http://localhost:8080/api/users', {
+                        headers: { 'Authorization': this.token }
+                    });
+                    this.users = await response.json();
+                },
                 async loadTicket(ticketId) {
-                    const response = await fetch('http://localhost:8080/api/tickets/' + ticketId);
+                    const response = await fetch('http://localhost:8080/api/tickets/' + ticketId, {
+                        headers: { 'Authorization': this.token }
+                    });
                     this.ticket = await response.json();
+                },
+                async loadLogs(ticketId) {
+                    const response = await fetch('http://localhost:8080/api/tickets/' + ticketId + '/logs', {
+                        headers: { 'Authorization': this.token }
+                    });
+                    this.logs = await response.json();
                 },
                 async confirm() {
                     const response = await fetch(
                         'http://localhost:8080/api/tickets/' + this.ticket.id + '/confirm',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ actorId: this.currentUser.id })
+                            headers: { 'Authorization': this.token }
                         }
                     );
                     if (!response.ok) {
@@ -189,8 +245,11 @@
                         'http://localhost:8080/api/tickets/' + this.ticket.id + '/dispute',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ actorId: this.currentUser.id, comment: this.disputeComment })
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': this.token
+                            },
+                            body: JSON.stringify({ comment: this.disputeComment })
                         }
                     );
                     if (!response.ok) {
@@ -204,8 +263,7 @@
                         'http://localhost:8080/api/tickets/' + this.ticket.id + '/withdraw',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ actorId: this.currentUser.id })
+                            headers: { 'Authorization': this.token }
                         }
                     );
                     if (!response.ok) {
@@ -219,9 +277,11 @@
                         'http://localhost:8080/api/tickets/' + this.ticket.id + '/resubmit',
                         {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': this.token
+                            },
                             body: JSON.stringify({
-                                actorId: this.currentUser.id,
                                 description: this.resubmitDescription || this.ticket.description,
                                 severity: this.ticket.severity
                             })
@@ -246,10 +306,31 @@
                     };
                     return colors[status] || '#999';
                 },
-                logout() {
-                localStorage.clear();
-                window.location.href = 'login.html';
-}
+                actorName(actorId) {
+                    const user = this.users.find(u => u.id === actorId);
+                    return user ? user.full_name : ('使用者 #' + actorId);
+                },
+                actionLabel(action) {
+                    const labels = {
+                        'SUBMIT': '申請人提交',
+                        'SUPERVISOR_APPROVE': '主管核准',
+                        'SUPERVISOR_REJECT': '主管退回',
+                        'TECH_CLAIM': '技術員認領',
+                        'TECH_RETURN': '技術員退回',
+                        'TECH_COMPLETE': '技術員完成維修',
+                        'APPLICANT_WITHDRAW': '申請人撤回',
+                        'APPLICANT_RESUBMIT': '申請人重新提交',
+                        'QC_APPROVE': '品管審核通過',
+                        'APPLICANT_CONFIRM': '申請人確認結案',
+                        'APPLICANT_DISPUTE': '申請人駁回',
+                        'MANAGER_CLOSE': '經理結案'
+                    };
+                    return labels[action] || action;
+                },
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    return dateStr.replace('T', ' ').substring(0, 16);
+                }
             }
         }).mount('#app');
     </script>

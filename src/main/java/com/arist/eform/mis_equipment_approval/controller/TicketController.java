@@ -7,9 +7,11 @@ import com.arist.eform.mis_equipment_approval.dto.QcReviewRequest;
 import com.arist.eform.mis_equipment_approval.dto.ResolveTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.ResubmitTicketRequest;
 import com.arist.eform.mis_equipment_approval.dto.TicketResponse;
+import com.arist.eform.mis_equipment_approval.model.ApprovalLog;
 import com.arist.eform.mis_equipment_approval.model.Ticket;
 import com.arist.eform.mis_equipment_approval.model.TicketStatus;
 import com.arist.eform.mis_equipment_approval.model.User;
+import com.arist.eform.mis_equipment_approval.repository.ApprovalLogRepository;
 import com.arist.eform.mis_equipment_approval.service.TicketService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +34,11 @@ import java.util.stream.Collectors;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final ApprovalLogRepository approvalLogRepository;
 
-    public TicketController(TicketService ticketService) {
+    public TicketController(TicketService ticketService, ApprovalLogRepository approvalLogRepository) {
         this.ticketService = ticketService;
+        this.approvalLogRepository = approvalLogRepository;
     }
 
     private User currentUser(HttpServletRequest request) {
@@ -215,5 +219,11 @@ public class TicketController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(TicketResponse.fromTicket(ticket));
+    }
+
+    @GetMapping("/{id}/logs")
+    public ResponseEntity<?> getTicketLogs(@PathVariable Integer id) {
+        List<ApprovalLog> logs = approvalLogRepository.findByTicketId(id);
+        return ResponseEntity.ok(logs);
     }
 }

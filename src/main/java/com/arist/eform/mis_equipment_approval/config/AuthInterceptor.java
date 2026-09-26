@@ -19,7 +19,12 @@ public class AuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
-        // 登入這支 API 本身不需要檢查 Token(因為使用者這時候還沒有 Token)
+        // 瀏覽器的「預檢請求」(CORS preflight),一律放行,不檢查 Token
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
+        // 登入這支 API 本身不需要檢查 Token(因為user這時候還沒有 Token)
         if (request.getRequestURI().equals("/api/auth/login")) {
             return true;
         }
